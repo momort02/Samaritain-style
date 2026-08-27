@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAMARITAN // REAL-TIME SYSTEM TELEMETRY</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --primary: #000000;
+      --alert: #ff0000;
+      --muted: #777777;
+      --grid: rgba(0, 0, 0, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--primary);
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 24px;
+      overflow: hidden;
+      cursor: crosshair;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    body.theme-red    { --bg: #100000; --primary: #ff0000; --muted: #880000; --grid: rgba(255,0,0,0.1); }
+    body.theme-green   { --bg: #001000; --primary: #00ff66; --muted: #118844; --grid: rgba(0,255,102,0.1); }
+    body.theme-amber   { --bg: #100a00; --primary: #ffb000; --muted: #886000; --grid: rgba(255,176,0,0.1); }
+    body.theme-blue    { --bg: #00060f; --primary: #33aaff; --muted: #1a5580; --grid: rgba(51,170,255,0.1); }
+
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        linear-gradient(to right, var(--grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+      background-size: 30px 30px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+      font-weight: 800;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 12px;
+      z-index: 3;
+    }
+
+    .header-group { display: flex; gap: 20px; align-items: center; }
+
+    .badge {
+      background-color: var(--primary);
+      color: var(--bg);
+      padding: 3px 8px;
+      font-weight: 900;
+    }
+
+    .badge.alert { background-color: var(--alert); color: #ffffff; }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      z-index: 3;
+    }
+
+    .sub-status {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+
+    .text-display {
+      font-size: 2.6rem;
+      font-weight: 900;
+      text-align: center;
+      min-height: 4.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 90vw;
+      word-break: break-word;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 16px;
+      height: 2.6rem;
+      background-color: var(--primary);
+      margin-left: 8px;
+      animation: blink 0.6s infinite;
+    }
+
+    .input-box {
+      margin-top: 30px;
+      display: flex;
+      align-items: center;
+      border: 2px solid var(--primary);
+      padding: 8px 14px;
+      background: var(--bg);
+      width: 100%;
+      max-width: 550px;
+    }
+
+    .input-prefix { font-size: 0.85rem; font-weight: 900; margin-right: 10px; }
+
+    input[type="text"] {
+      border: none;
+      outline: none;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      width: 100%;
+      background: transparent;
+      color: var(--primary);
+    }
+
+    .target-card {
+      margin-top: 25px;
+      border: 2px solid var(--primary);
+      padding: 16px 30px;
+      position: relative;
+      min-width: 340px;
+      max-width: 90vw;
+    }
+
+    .target-card .label {
+      position: absolute;
+      top: -10px;
+      left: 12px;
+      background: var(--alert);
+      color: #ffffff;
+      font-size: 0.6rem;
+      font-weight: 900;
+      padding: 2px 6px;
+    }
+
+    .target-info {
+      font-size: 0.75rem;
+      line-height: 1.8;
+      font-weight: 700;
+      white-space: pre-wrap;
+    }
+
+    .mouse-tracker {
+      position: absolute;
+      border: 1px solid var(--primary);
+      padding: 4px;
+      font-size: 0.55rem;
+      font-weight: 800;
+      pointer-events: none;
+      z-index: 10;
+      transform: translate(12px, 12px);
+      background: var(--bg);
+      white-space: nowrap;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border-top: 1px solid var(--primary);
+      padding-top: 12px;
+      z-index: 3;
+    }
+
+    .system-logs {
+      position: fixed;
+      top: 70px;
+      right: 24px;
+      width: 280px;
+      max-height: 65vh;
+      overflow: hidden;
+      font-size: 0.55rem;
+      line-height: 1.8;
+      font-weight: 700;
+      color: var(--muted);
+      pointer-events: none;
+      z-index: 2;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .system-logs div {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @media (max-width: 900px) {
+      .system-logs { display: none; }
+    }
+
+    @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+  </style>
+</head>
+<body>
+
+  <div class="system-logs" id="system-logs"></div>
+
+  <header>
+    <div class="header-group">
+      <span>SYS // SAMARITAN OS</span>
+      <span class="badge" id="mode-badge">STANDARD MODE</span>
+    </div>
+    <div class="header-group">
+      <span id="node-count">NOTES: 0 EN MÉMOIRE</span>
+      <span class="badge" id="lock-badge">DÉVERROUILLÉ</span>
+      <span class="badge alert" id="threat-badge">AUCUN MINUTEUR</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="sub-status" id="sub-status">SYSTÈME PRÊT</div>
+    <div class="text-display">
+      <span id="typewriter"></span><span class="cursor"></span>
+    </div>
+
+    <div class="input-box">
+      <span class="input-prefix">&gt;</span>
+      <input type="text" id="command-input" placeholder="TAPEZ 'HELP' POUR LA LISTE DES COMMANDES..." autocomplete="off">
+    </div>
+
+    <div class="target-card">
+      <div class="label" id="card-label">JOURNAL SYSTÈME</div>
+      <div class="target-info" id="info-log">EN ATTENTE DE DIRECTIVES...</div>
+    </div>
+  </main>
+
+  <div class="mouse-tracker" id="tracker">TRACKING: POS(0,0)</div>
+
+  <footer>
+    <div>LOCATION: PARIS // 48.8566° N, 2.3522° E</div>
+    <div id="clock">00:00:00.000</div>
+  </footer>
+
+  <script>
+    // ===== Horloge =====
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      const ms = String(now.getMilliseconds()).padStart(3, '0');
+      document.getElementById('clock').textContent = `${h}:${m}:${s}.${ms}`;
+    }
+    setInterval(updateClock, 30);
+
+    // ===== Son synthétisé =====
+    let audioCtx = null;
+    function playTypeTick() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = 700 + Math.random() * 250;
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.035);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.035);
+      } catch (e) {}
+    }
+
+    function playResultSound(type) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        if (type === 'success') {
+          [520, 780].forEach((freq, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const start = audioCtx.currentTime + idx * 0.07;
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(0.08, start + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.12);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(start);
+            osc.stop(start + 0.13);
+          });
+        } else if (type === 'error') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.25);
+          gain.gain.setValueAtTime(0.09, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.25);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.25);
+        }
+      } catch (e) {}
+    }
+
+    // ===== Machine à écrire =====
+    const typewriter = document.getElementById('typewriter');
+    const subStatus = document.getElementById('sub-status');
+    let isLocked = false;
+    let lockPassword = null;
+    let failedAttempts = 0;
+
+    function displayText(mainText, statusText = "SORTIE", callback = null, resultType = null) {
+      subStatus.textContent = statusText;
+      typewriter.textContent = "";
+      let i = 0;
+      function type() {
+        if (i < mainText.length) {
+          const ch = mainText.charAt(i);
+          typewriter.textContent += ch;
+          if (ch.trim() !== "") playTypeTick();
+          i++;
+          setTimeout(type, 30);
+        } else {
+          if (resultType) playResultSound(resultType);
+          if (callback) setTimeout(callback, 600);
+        }
+      }
+      type();
+    }
+
+    displayText("QUELLES SONT VOS COMMANDES ?");
+
+    document.addEventListener('click', () => { if (audioCtx) audioCtx.resume(); }, { once: true });
+    document.addEventListener('keydown', () => { if (audioCtx) audioCtx.resume(); }, { once: true });
+
+    // ===== Suivi de la souris & Télémétrie réels =====
+    const tracker = document.getElementById('tracker');
+    let mouseX = 0, mouseY = 0;
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      tracker.style.left = mouseX + 'px';
+      tracker.style.top = mouseY + 'px';
+      tracker.textContent = `TRACKING: POS(${mouseX}, ${mouseY})`;
+    });
+
+    // ===== État en mémoire =====
+    let notes = [];
+    let activeTimers = 0;
+    const infoLog = document.getElementById('info-log');
+    const nodeCount = document.getElementById('node-count');
+    const threatBadge = document.getElementById('threat-badge');
+
+    function refreshLog() {
+      nodeCount.textContent = `NOTES: ${notes.length} EN MÉMOIRE`;
+      if (notes.length === 0) {
+        infoLog.textContent = "AUCUNE NOTE ENREGISTRÉE.";
+        return;
+      }
+      infoLog.textContent = notes
+        .map((n, idx) => `[${idx + 1}] ${n}`)
+        .join('\n');
+    }
+    refreshLog();
+
+    function setTimerBadge() {
+      threatBadge.textContent = activeTimers > 0
+        ? `${activeTimers} MINUTEUR(S) ACTIF(S)`
+        : "AUCUN MINUTEUR";
+    }
+
+    const lockBadge = document.getElementById('lock-badge');
+    function setLockBadge() {
+      if (isLocked) {
+        lockBadge.textContent = "VERROUILLÉ";
+        lockBadge.classList.add('alert');
+      } else {
+        lockBadge.textContent = "DÉVERROUILLÉ";
+        lockBadge.classList.remove('alert');
+      }
+    }
+    setLockBadge();
+
+    // ===== VRAIES DONNÉES DE TÉLÉMÉTRIE (Remplacement des faux logs) =====
+    const systemLogsEl = document.getElementById('system-logs');
+    const MAX_LOG_LINES = 14;
+
+    function appendRealTelemetryLine(text) {
+      const line = document.createElement('div');
+      line.textContent = text;
+      systemLogsEl.appendChild(line);
+      while (systemLogsEl.children.length > MAX_LOG_LINES) {
+        systemLogsEl.removeChild(systemLogsEl.firstChild);
+      }
+    }
+
+    // 1. Surveillance de la mémoire JS réelle
+    setInterval(() => {
+      if (performance && performance.memory) {
+        const usedMB = (performance.memory.usedJSHeapSize / 1048576).toFixed(1);
+        const limitMB = (performance.memory.jsHeapSizeLimit / 1048576).toFixed(0);
+        appendRealTelemetryLine(`RAM USED: ${usedMB}MB / ${limitMB}MB`);
+      }
+    }, 2500);
+
+    // 2. Coordonnées curseur en continu
+    setInterval(() => {
+      appendRealTelemetryLine(`CURSOR: X:${mouseX} Y:${mouseY}`);
+    }, 1800);
+
+    // 3. Statut de connexion et type de réseau réels
+    setInterval(() => {
+      const netStatus = navigator.onLine ? "ONLINE" : "OFFLINE";
+      const con = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      const type = con ? (con.effectiveType || con.type || "").toUpperCase() : "";
+      const rtt = con && con.rtt ? `${con.rtt}MS` : "";
+      appendRealTelemetryLine(`NET: ${netStatus} ${type} ${rtt}`.trim());
+    }, 3200);
+
+    // 4. Dimensions fenêtre et orientation réelles
+    setInterval(() => {
+      appendRealTelemetryLine(`VIEWPORT: ${window.innerWidth}X${window.innerHeight}`);
+    }, 4000);
+
+    // 5. Statut batterie réel
+    if (navigator.getBattery) {
+      navigator.getBattery().then(battery => {
+        const updateBattery = () => {
+          const level = Math.round(battery.level * 100);
+          const state = battery.charging ? "CHARGING" : "DISCHARGING";
+          appendRealTelemetryLine(`BATTERY: ${level}% (${state})`);
+        };
+        updateBattery();
+        battery.addEventListener('levelchange', updateBattery);
+        battery.addEventListener('chargingchange', updateBattery);
+      }).catch(() => {});
+    }
+
+    // 6. Télémétrie d'événements réseau (Online / Offline)
+    window.addEventListener('online', () => appendRealTelemetryLine("EVENT: NETWORK CONNECTED"));
+    window.addEventListener('offline', () => appendRealTelemetryLine("EVENT: NETWORK DISCONNECTED"));
+
+    // 7. Détection du focus / perte de focus de la fenêtre
+    window.addEventListener('focus', () => appendRealTelemetryLine("WINDOW: FOCUS ACQUIRED"));
+    window.addEventListener('blur', () => appendRealTelemetryLine("WINDOW: FOCUS LOST"));
+
+    function safeCalc(expr) {
+      const cleaned = expr.replace(/\s+/g, '');
+      if (!/^[0-9+\-*/().%]+$/.test(cleaned)) {
+        throw new Error("EXPRESSION INVALIDE");
+      }
+      const result = Function(`"use strict"; return (${cleaned})`)();
+      if (typeof result !== 'number' || !isFinite(result)) {
+        throw new Error("RÉSULTAT INVALIDE");
+      }
+      return result;
+    }
+
+    // ===== Interpréteur de commandes =====
+    const input = document.getElementById('command-input');
+    let commandHistory = [];
+    let historyIndex = -1;
+    let draftBeforeHistory = '';
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const fullCmd = input.value.trim();
+        input.value = '';
+        historyIndex = -1;
+        draftBeforeHistory = '';
+        if (!fullCmd) return;
+
+        commandHistory.push(fullCmd);
+        appendRealTelemetryLine(`CMD EXEC: ${fullCmd.slice(0, 18).toUpperCase()}`);
+
+        const parts = fullCmd.split(' ');
+        const cmd = parts[0].toUpperCase();
+        const arg = parts.slice(1).join(' ');
+
+        executeCommand(cmd, arg);
+      } else if (e.key === 'ArrowUp') {
+        if (commandHistory.length === 0) return;
+        e.preventDefault();
+        if (historyIndex === -1) {
+          draftBeforeHistory = input.value;
+          historyIndex = commandHistory.length - 1;
+        } else if (historyIndex > 0) {
+          historyIndex--;
+        }
+        input.value = commandHistory[historyIndex];
+        input.setSelectionRange(input.value.length, input.value.length);
+      } else if (e.key === 'ArrowDown') {
+        if (historyIndex === -1) return;
+        e.preventDefault();
+        if (historyIndex < commandHistory.length - 1) {
+          historyIndex++;
+          input.value = commandHistory[historyIndex];
+        } else {
+          historyIndex = -1;
+          input.value = draftBeforeHistory;
+        }
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    });
+
+    function getOSFromUserAgent(ua) {
+      if (ua.includes("Win")) return "WINDOWS";
+      if (ua.includes("Mac")) return "MACOS";
+      if (ua.includes("Linux")) return "LINUX";
+      if (ua.includes("Android")) return "ANDROID";
+      if (ua.includes("like Mac")) return "IOS";
+      return "UNKNOWN_OS";
+    }
+
+    function getBrowserFromUserAgent(ua) {
+      if (ua.includes("Firefox/")) return "FIREFOX";
+      if (ua.includes("Edg/")) return "EDGE";
+      if (ua.includes("Chrome/")) return "CHROME";
+      if (ua.includes("Safari/")) return "SAFARI";
+      return "UNKNOWN_BROWSER";
+    }
+
+    function executeCommand(cmd, arg) {
+      if (isLocked && cmd !== 'UNLOCK') {
+        displayText("SYSTÈME VERROUILLÉ. TAPEZ 'UNLOCK <MOT DE PASSE>'.", "ACCÈS REFUSÉ");
+        return;
+      }
+
+      switch (cmd) {
+        case 'HELP':
+          displayText(
+            "HELP · WHOAMI · TIME · DATE · CALC · NOTE · NOTES · DELNOTE · TIMER · THEME · RANDOM · ECHO · LOCK · UNLOCK · CLEAR",
+            "LISTE DES COMMANDES",
+            null,
+            'success'
+          );
+          break;
+
+        case 'WHOAMI': {
+          const ua = navigator.userAgent;
+          const os = getOSFromUserAgent(ua);
+          const browser = getBrowserFromUserAgent(ua);
+          const lang = (navigator.language || 'INCONNUE').toUpperCase();
+          const screenRes = `${window.screen.width}X${window.screen.height}`;
+          const cores = navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} CORES` : 'INCONNU';
+          const memory = navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'INCONNUE';
+          const online = navigator.onLine ? 'ONLINE' : 'OFFLINE';
+
+          const whoamiData = `SYSTÈME : ${os}
+NAVIGATEUR : ${browser}
+RÉSOLUTION : ${screenRes}
+LANGUE : ${lang}
+PROCESSEUR : ${cores}
+MÉMOIRE : ${memory}
+STATUT RÉSEAU : ${online}`;
+
+          infoLog.textContent = whoamiData;
+          document.getElementById('card-label').textContent = "IDENTITÉ SYSTÈME DÉTECTÉE";
+          displayText(`SUJET : ${os} // ${browser}`, "IDENTIFICATION DE L'UTILISATEUR", null, 'success');
+          break;
+        }
+
+        case 'TIME': {
+          const now = new Date();
+          displayText(now.toLocaleTimeString('fr-FR'), "HEURE ACTUELLE", null, 'success');
+          break;
+        }
+
+        case 'DATE': {
+          const now = new Date();
+          displayText(now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), "DATE ACTUELLE", null, 'success');
+          break;
+        }
+
+        case 'CALC':
+          if (!arg) {
+            displayText("ERREUR : FOURNISSEZ UNE EXPRESSION. EX: CALC 12*(3+4)", "ARGUMENT MANQUANT");
+          } else {
+            try {
+              const result = safeCalc(arg);
+              displayText(`${arg} = ${result}`, "CALCUL");
+            } catch (err) {
+              displayText("ERREUR DE CALCUL : EXPRESSION INVALIDE.", "ERREUR");
+            }
+          }
+          break;
+
+        case 'NOTE':
+          if (!arg) {
+            displayText("ERREUR : ÉCRIVEZ LE TEXTE DE LA NOTE APRÈS 'NOTE'.", "ARGUMENT MANQUANT");
+          } else {
+            notes.push(arg);
+            refreshLog();
+            displayText(`NOTE ENREGISTRÉE (#${notes.length}).`, "NOTE AJOUTÉE");
+          }
+          break;
+
+        case 'NOTES':
+          refreshLog();
+          displayText(notes.length ? `${notes.length} NOTE(S) EN MÉMOIRE.` : "AUCUNE NOTE.", "NOTES");
+          break;
+
+        case 'DELNOTE': {
+          const idx = parseInt(arg, 10);
+          if (!idx || idx < 1 || idx > notes.length) {
+            displayText("ERREUR : NUMÉRO DE NOTE INVALIDE.", "ARGUMENT INVALIDE");
+          } else {
+            notes.splice(idx - 1, 1);
+            refreshLog();
+            displayText(`NOTE #${idx} SUPPRIMÉE.`, "NOTE SUPPRIMÉE");
+          }
+          break;
+        }
+
+        case 'TIMER': {
+          const seconds = parseInt(arg, 10);
+          if (!seconds || seconds <= 0) {
+            displayText("ERREUR : INDIQUEZ UNE DURÉE EN SECONDES. EX: TIMER 60", "ARGUMENT INVALIDE");
+          } else {
+            activeTimers++;
+            setTimerBadge();
+            displayText(`MINUTEUR LANCÉ : ${seconds}S.`, "MINUTEUR ACTIF");
+            setTimeout(() => {
+              activeTimers = Math.max(0, activeTimers - 1);
+              setTimerBadge();
+              displayText(`MINUTEUR DE ${seconds}S TERMINÉ.`, "MINUTEUR EXPIRÉ");
+            }, seconds * 1000);
+          }
+          break;
+        }
+
+        case 'THEME': {
+          const theme = (arg || '').toUpperCase();
+          document.body.classList.remove('theme-red', 'theme-green', 'theme-amber', 'theme-blue');
+          const map = { RED: 'theme-red', GREEN: 'theme-green', AMBER: 'theme-amber', BLUE: 'theme-blue' };
+          if (theme === 'DEFAULT' || theme === '') {
+            displayText("THÈME RÉINITIALISÉ.", "THÈME");
+          } else if (map[theme]) {
+            document.body.classList.add(map[theme]);
+            displayText(`THÈME APPLIQUÉ : ${theme}.`, "THÈME");
+          } else {
+            displayText("THÈMES DISPONIBLES : DEFAULT, RED, GREEN, AMBER, BLUE.", "THÈME INVALIDE");
+          }
+          break;
+        }
+
+        case 'RANDOM': {
+          const nums = arg.split(' ').map(Number);
+          const [min, max] = nums.length === 2 && nums.every(n => !isNaN(n)) ? nums : [1, 100];
+          const lo = Math.min(min, max), hi = Math.max(min, max);
+          const result = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+          displayText(`NOMBRE ALÉATOIRE (${lo}-${hi}) : ${result}`, "GÉNÉRATEUR");
+          break;
+        }
+
+        case 'ECHO':
+          displayText(arg || "...", "ÉCHO");
+          break;
+
+        case 'LOCK': {
+          const pwd = (arg || '').trim();
+          if (!pwd) {
+            displayText("ERREUR : DÉFINISSEZ UN MOT DE PASSE. EX: LOCK 1234", "ARGUMENT MANQUANT");
+          } else {
+            isLocked = true;
+            lockPassword = pwd;
+            setLockBadge();
+            displayText("SYSTÈME VERROUILLÉ PAR L'OPÉRATEUR.", "VERROU DE SÉCURITÉ");
+          }
+          break;
+        }
+
+        case 'UNLOCK': {
+          if (!isLocked) {
+            displayText("LE SYSTÈME N'EST PAS VERROUILLÉ.", "AUCUNE ACTION");
+            break;
+          }
+          const attempt = (arg || '').trim();
+          if (!attempt) {
+            displayText("ERREUR : SAISISSEZ LE MOT DE PASSE. EX: UNLOCK 1234", "MOT DE PASSE REQUIS");
+          } else if (attempt === lockPassword) {
+            failedAttempts = 0;
+            isLocked = false;
+            lockPassword = null;
+            setLockBadge();
+            displayText("SYSTÈME DÉVERROUILLÉ.", "ACCÈS AUTORISÉ");
+          } else {
+            failedAttempts++;
+            displayText(`MOT DE PASSE INCORRECT. TENTATIVE ${failedAttempts}.`, "ACCÈS REFUSÉ");
+          }
+          break;
+        }
+
+        case 'CLEAR':
+          notes = [];
+          document.getElementById('card-label').textContent = "JOURNAL SYSTÈME";
+          refreshLog();
+          displayText("QUELLES SONT VOS COMMANDES ?");
+          break;
+
+        default:
+          displayText(`DIRECTIVE INCONNUE : "${cmd}". TAPEZ 'HELP'.`, "ERREUR");
+          break;
+      }
+    }
+  </script>
+
+</body>
+</html>
