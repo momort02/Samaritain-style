@@ -28,11 +28,8 @@
       text-transform: uppercase;
       letter-spacing: 2px;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 16px;
-      overflow-x: hidden;
+      overflow: hidden;
+      padding: 0;
       cursor: crosshair;
       transition: background-color 0.3s, color 0.3s;
     }
@@ -78,6 +75,88 @@
       background-size: 30px 30px;
       pointer-events: none;
       z-index: 1;
+    }
+
+    .carousel-viewport {
+      width: 100vw;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+      z-index: 2;
+    }
+
+    .carousel-track {
+      display: flex;
+      flex-direction: row-reverse;
+      width: 200vw;
+      min-height: 100vh;
+      transform: translateX(-100vw);
+      transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .screen {
+      width: 100vw;
+      min-height: 100vh;
+      flex: 0 0 100vw;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .map-screen {
+      justify-content: flex-start;
+      gap: 18px;
+      padding-top: 28px;
+    }
+
+    .map-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 14px;
+    }
+
+    .map-title {
+      font-size: clamp(1rem, 2vw, 1.5rem);
+      font-weight: 900;
+    }
+
+    .map-back {
+      border: 2px solid var(--primary);
+      background: var(--bg);
+      color: var(--primary);
+      min-height: 44px;
+      padding: 8px 14px;
+      font: inherit;
+      font-size: 0.7rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+
+    .map-back:hover,
+    .map-back:focus-visible {
+      background: var(--primary);
+      color: var(--bg);
+      outline: none;
+    }
+
+    .map-meta {
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    .map-frame {
+      border: 2px solid var(--primary);
+      width: 100%;
+      flex: 1;
+      min-height: 420px;
+      background: var(--bg);
     }
 
     header {
@@ -213,6 +292,57 @@
       word-break: break-word;
     }
 
+    .target-info img {
+      display: block;
+      width: 100%;
+      max-height: 360px;
+      object-fit: contain;
+      margin-top: 12px;
+      border: 1px solid var(--primary);
+    }
+
+    .target-card.space-card {
+      max-width: 900px;
+      padding: 22px 24px;
+    }
+
+    .space-card .target-info {
+      text-transform: none;
+      letter-spacing: 0.2px;
+      line-height: 1.65;
+      font-size: 0.85rem;
+      font-weight: 500;
+      overflow: hidden;
+    }
+
+    .space-card .space-image {
+      float: right;
+      width: min(48%, 460px);
+      max-height: 430px;
+      object-fit: cover;
+      margin: 0 0 18px 26px;
+    }
+
+    .space-card .space-title {
+      display: block;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-size: 1rem;
+      font-weight: 900;
+      margin-bottom: 5px;
+    }
+
+    .space-card .space-date {
+      display: block;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
     .mouse-tracker {
       position: fixed;
       border: 1px solid var(--primary);
@@ -282,7 +412,47 @@
     /* MOBILE ET PETITS ÉCRANS */
     @media (max-width: 768px) {
       body {
+        padding: 0;
+      }
+
+      .screen {
         padding: 12px;
+      }
+
+      .map-screen {
+        padding-top: 18px;
+      }
+
+      .map-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .map-frame {
+        min-height: 55vh;
+      }
+
+      .target-card.space-card {
+        padding: 18px;
+      }
+
+      .space-card .space-image {
+        float: none;
+        width: 100%;
+        max-height: 300px;
+        margin: 0 0 16px;
+      }
+
+      body.space-mode {
+        overflow-y: auto;
+      }
+
+      body.space-mode .carousel-viewport {
+        overflow: visible;
+      }
+
+      body.space-mode .carousel-track {
+        min-height: auto;
       }
 
       header {
@@ -334,7 +504,10 @@
 
   <div class="system-logs" id="system-logs"></div>
 
-  <header>
+  <div class="carousel-viewport">
+    <div class="carousel-track" id="carousel-track">
+      <section class="screen" aria-label="Console principale">
+        <header>
     <div class="header-group">
       <span>SYS // SAMARITAN OS</span>
       <span class="badge" id="mode-badge">STANDARD MODE</span>
@@ -344,9 +517,9 @@
       <span class="badge" id="lock-badge">DÉVERROUILLÉ</span>
       <span class="badge alert" id="threat-badge">AUCUN MINUTEUR</span>
     </div>
-  </header>
+      </header>
 
-  <main>
+      <main>
     <div class="sub-status" id="sub-status">SYSTÈME PRÊT</div>
     <div class="text-display">
       <span id="typewriter"></span><span class="cursor"></span>
@@ -361,14 +534,28 @@
       <div class="label" id="card-label">JOURNAL SYSTÈME</div>
       <div class="target-info" id="info-log">EN ATTENTE DE DIRECTIVES...</div>
     </div>
-  </main>
+        </main>
+
+        <footer>
+          <div>LOCATION: PARIS // 48.8566° N, 2.3522° E</div>
+          <div id="clock">00:00:00.000</div>
+        </footer>
+      </section>
+
+      <section class="screen map-screen" aria-label="Carte opérationnelle">
+        <div class="map-toolbar">
+          <div>
+            <div class="map-title">CARTE OPÉRATIONNELLE</div>
+            <div class="map-meta" id="map-meta">EN ATTENTE DE COORDONNÉES</div>
+          </div>
+          <button class="map-back" id="map-back" type="button" aria-label="Retourner à la console">&lt; RETOUR CONSOLE</button>
+        </div>
+        <iframe class="map-frame" id="map-frame" title="Carte de localisation" loading="lazy"></iframe>
+      </section>
+    </div>
+  </div>
 
   <div class="mouse-tracker" id="tracker">TRACKING: POS(0,0)</div>
-
-  <footer>
-    <div>LOCATION: PARIS // 48.8566° N, 2.3522° E</div>
-    <div id="clock">00:00:00.000</div>
-  </footer>
 
   <script>
     // ===== Horloge =====
@@ -913,6 +1100,96 @@
       infoLog.appendChild(image);
     }
 
+    async function fetchCisaKev() {
+      const response = await fetch('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json');
+      if (!response.ok) throw new Error(`CISA HTTP ${response.status}`);
+      const data = await response.json();
+      return (data.vulnerabilities || [])
+        .sort((first, second) => second.dateAdded.localeCompare(first.dateAdded))
+        .slice(0, 5);
+    }
+
+    async function fetchNvdCve(cveId) {
+      if (!/^CVE-\d{4}-\d{4,}$/i.test(cveId)) {
+        throw new Error("FORMAT CVE INVALIDE");
+      }
+      const response = await fetch(`https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=${encodeURIComponent(cveId.toUpperCase())}`);
+      if (!response.ok) throw new Error(`NVD HTTP ${response.status}`);
+      const data = await response.json();
+      return data.vulnerabilities?.[0]?.cve || null;
+    }
+
+    async function fetchNasaApod() {
+      const response = await fetch('./nasa-apod.json', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`NASA HTTP ${response.status}`);
+      return response.json();
+    }
+
+    function showNasaApod(apod) {
+      document.body.classList.add('space-mode');
+      targetCard.classList.add('space-card');
+      infoLog.textContent = '';
+
+      const title = document.createElement('strong');
+      title.className = 'space-title';
+      title.textContent = apod.title || 'IMAGE DU JOUR';
+      infoLog.appendChild(title);
+
+      const date = document.createElement('span');
+      date.className = 'space-date';
+      date.textContent = `NASA APOD // ${apod.date || 'DATE INCONNUE'}`;
+      infoLog.appendChild(date);
+
+      if (apod.media_type === 'image' && apod.url) {
+        const image = document.createElement('img');
+        image.className = 'space-image';
+        image.src = apod.url;
+        image.alt = apod.title || 'Image NASA du jour';
+        infoLog.appendChild(image);
+      }
+
+      const explanation = document.createElement('span');
+      explanation.textContent = apod.explanation || 'AUCUNE DESCRIPTION DISPONIBLE.';
+      infoLog.appendChild(explanation);
+
+      if (apod.media_type !== 'image' && apod.url) {
+        const link = document.createElement('a');
+        link.href = apod.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'OUVRIR LE MÉDIA NASA';
+        link.style.color = 'var(--primary)';
+        infoLog.appendChild(document.createTextNode('\n'));
+        infoLog.appendChild(link);
+      }
+    }
+
+    const carouselTrack = document.getElementById('carousel-track');
+    const mapFrame = document.getElementById('map-frame');
+    const mapMeta = document.getElementById('map-meta');
+    const targetCard = document.querySelector('.target-card');
+
+    function showMap(location) {
+      const latitude = Number(location.latitude);
+      const longitude = Number(location.longitude);
+      const delta = 0.04;
+      const bbox = `${longitude - delta},${latitude - delta},${longitude + delta},${latitude + delta}`;
+      mapFrame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latitude},${longitude}`;
+      mapMeta.textContent = `${location.name.toUpperCase()} // ${location.country_code} // ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+      carouselTrack.style.transform = 'translateX(0)';
+      document.getElementById('map-back').focus();
+    }
+
+    function returnToConsole() {
+      carouselTrack.style.transform = 'translateX(-100vw)';
+      setTimeout(() => input.focus(), 600);
+    }
+
+    document.getElementById('map-back').addEventListener('click', returnToConsole);
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') returnToConsole();
+    });
+
     // ===== Interpréteur de commandes =====
     const input = document.getElementById('command-input');
     let commandHistory = [];
@@ -978,6 +1255,8 @@
     }
 
     function executeCommand(cmd, arg) {
+      document.body.classList.remove('space-mode');
+      targetCard.classList.remove('space-card');
       if (isLocked && cmd !== 'UNLOCK') {
         displayText("SYSTÈME VERROUILLÉ. TAPEZ 'UNLOCK <MOT DE PASSE>'.", "ACCÈS REFUSÉ");
         return;
@@ -986,7 +1265,7 @@
       switch (cmd) {
         case 'HELP':
           displayText(
-            "HELP · WHOAMI · TIME · DATE · CALC · NOTE · NOTES · DELNOTE · TIMER · THEME · LANG · RANDOM · ECHO · TRACK · ANIME · WEATHER · QR · LOCK · UNLOCK · CLEAR",
+            "HELP · WHOAMI · TIME · DATE · CALC · NOTE · NOTES · DELNOTE · TIMER · THEME · LANG · RANDOM · ECHO · TRACK · ANIME · WEATHER · MAP · THREAT · CVE · SPACE · QR · LOCK · UNLOCK · CLEAR",
             "LISTE DES COMMANDES",
             null,
             'success'
@@ -1161,6 +1440,86 @@ STATUT RÉSEAU : ${online}`;
           }).catch(error => {
             infoLog.textContent = `ÉCHEC DE LA REQUÊTE : ${error.message || 'ERREUR INCONNUE'}.`;
             displayText("ERREUR RÉSEAU. MÉTÉO INDISPONIBLE.", "WEATHER // ÉCHEC", null, 'error');
+          });
+          break;
+
+        case 'MAP':
+          if (!arg) {
+            displayText("ERREUR : PRÉCISEZ UN LIEU. EX: MAP LA NEUVILLE EN BEINE", "ARGUMENT MANQUANT");
+            break;
+          }
+          infoLog.textContent = "LOCALISATION DU LIEU...";
+          document.getElementById('card-label').textContent = `CARTE : ${arg.toUpperCase()}`;
+          displayText(`OUVERTURE DE LA CARTE : ${arg.toUpperCase()}`, "MAP // REQUÊTE RÉSEAU");
+          fetchWeather(arg.trim()).then(result => {
+            if (!result) {
+              infoLog.textContent = `LIEU INTROUVABLE : ${arg.toUpperCase()}.`;
+              displayText("AUCUNE LOCALISATION TROUVÉE.", "MAP // ÉCHEC", null, 'error');
+              return;
+            }
+            showMap(result.location);
+            infoLog.textContent = `CARTE OUVERTE : ${result.location.name.toUpperCase()}.`;
+            displayText("CARTE OPÉRATIONNELLE OUVERTE.", "MAP // TERMINÉ", null, 'success');
+          }).catch(error => {
+            infoLog.textContent = `ÉCHEC DE LA REQUÊTE : ${error.message || 'ERREUR INCONNUE'}.`;
+            displayText("ERREUR RÉSEAU. CARTE INDISPONIBLE.", "MAP // ÉCHEC", null, 'error');
+          });
+          break;
+
+        case 'THREAT':
+          infoLog.textContent = "CHARGEMENT DES VULNÉRABILITÉS EXPLOITÉES...";
+          document.getElementById('card-label').textContent = "CISA // KEV";
+          displayText("RÉCUPÉRATION DES MENACES ACTIVES", "THREAT // REQUÊTE RÉSEAU");
+          fetchCisaKev().then(vulnerabilities => {
+            if (!vulnerabilities.length) {
+              infoLog.textContent = "AUCUNE VULNÉRABILITÉ DISPONIBLE.";
+              displayText("AUCUNE MENACE RÉPERTORIÉE.", "THREAT // TERMINÉ", null, 'error');
+              return;
+            }
+            infoLog.textContent = vulnerabilities.map((vulnerability, index) =>
+              `[${index + 1}] ${vulnerability.cveID} // ${vulnerability.vendorProject} ${vulnerability.product}\nAJOUTÉE : ${vulnerability.dateAdded}\nACTION : ${vulnerability.requiredAction}`
+            ).join('\n\n');
+            displayText(`${vulnerabilities.length} MENACES ACTIVES TROUVÉES.`, "THREAT // CISA KEV", null, 'success');
+          }).catch(error => {
+            infoLog.textContent = `ÉCHEC DE LA REQUÊTE : ${error.message || 'ERREUR INCONNUE'}.`;
+            displayText("BASE CISA INDISPONIBLE.", "THREAT // ÉCHEC", null, 'error');
+          });
+          break;
+
+        case 'CVE':
+          if (!arg) {
+            displayText("ERREUR : PRÉCISEZ UN IDENTIFIANT. EX: CVE CVE-2024-3094", "ARGUMENT MANQUANT");
+            break;
+          }
+          infoLog.textContent = "INTERROGATION DE LA BASE NVD...";
+          document.getElementById('card-label').textContent = `NVD : ${arg.toUpperCase()}`;
+          displayText(`ANALYSE : ${arg.toUpperCase()}`, "CVE // REQUÊTE RÉSEAU");
+          fetchNvdCve(arg.trim()).then(cve => {
+            if (!cve) {
+              infoLog.textContent = `CVE INTROUVABLE : ${arg.toUpperCase()}.`;
+              displayText("AUCUNE VULNÉRABILITÉ TROUVÉE.", "CVE // ÉCHEC", null, 'error');
+              return;
+            }
+            const description = cve.descriptions?.find(item => item.lang === 'en')?.value || "DESCRIPTION INDISPONIBLE.";
+            const metrics = cve.metrics?.cvssMetricV31?.[0]?.cvssData || cve.metrics?.cvssMetricV30?.[0]?.cvssData;
+            infoLog.textContent = `${cve.id}\nPUBLIEE : ${cve.published?.slice(0, 10) || 'INCONNUE'}\nGRAVITÉ : ${metrics?.baseSeverity || 'INCONNUE'}\nSCORE : ${metrics?.baseScore ?? 'N/A'}\n\n${description}`;
+            displayText(`FICHE CVE : ${cve.id}`, "CVE // NVD", null, 'success');
+          }).catch(error => {
+            infoLog.textContent = `ÉCHEC DE LA REQUÊTE : ${error.message || 'ERREUR INCONNUE'}.`;
+            displayText("BASE NVD INDISPONIBLE.", "CVE // ÉCHEC", null, 'error');
+          });
+          break;
+
+        case 'SPACE':
+          infoLog.textContent = "RÉCUPÉRATION DE L'IMAGE NASA DU JOUR...";
+          document.getElementById('card-label').textContent = "NASA // APOD";
+          displayText("RÉCEPTION DES DONNÉES SPATIALES", "SPACE // REQUÊTE RÉSEAU");
+          fetchNasaApod().then(apod => {
+            showNasaApod(apod);
+            displayText(`IMAGE NASA : ${(apod.title || 'APOD').toUpperCase()}`, "SPACE // NASA", null, 'success');
+          }).catch(error => {
+            infoLog.textContent = `ÉCHEC DE LA REQUÊTE : ${error.message || 'ERREUR INCONNUE'}.`;
+            displayText("DONNÉES NASA INDISPONIBLES.", "SPACE // ÉCHEC", null, 'error');
           });
           break;
 
