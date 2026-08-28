@@ -868,11 +868,30 @@
     };
 
     async function fetchWeather(city) {
-      const searchUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=fr&format=json`;
-      const searchResponse = await fetch(searchUrl);
-      if (!searchResponse.ok) throw new Error(`GÉOCODAGE HTTP ${searchResponse.status}`);
-      const searchData = await searchResponse.json();
-      const location = searchData.results?.[0];
+      const normalizeLocationName = value => value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[-']/g, ' ')
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        .trim();
+      const normalizedCity = normalizeLocationName(city);
+      const searchNames = [...new Set([
+        city,
+        city.replace(/\s+en\s+/gi, '-en-'),
+        city.replace(/\s+/g, '-')
+      ])];
+      let locations = [];
+      for (const searchName of searchNames) {
+        const searchUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(searchName)}&count=10&language=fr&format=json`;
+        const searchResponse = await fetch(searchUrl);
+        if (!searchResponse.ok) throw new Error(`GÉOCODAGE HTTP ${searchResponse.status}`);
+        const searchData = await searchResponse.json();
+        locations = searchData.results || [];
+        if (locations.length) break;
+      }
+      const location = locations.find(result => normalizeLocationName(result.name) === normalizedCity)
+        || locations[0];
       if (!location) return null;
 
       const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`;
